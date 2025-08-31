@@ -1,0 +1,1783 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Academic Progress Tracker - Personal Student Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        .gradient-bg {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+        .card-hover {
+            transition: all 0.3s ease;
+        }
+        .card-hover:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+        }
+        .status-no-progress { background-color: #fee2e2; color: #dc2626; }
+        .status-in-progress { background-color: #fef3c7; color: #d97706; }
+        .status-completed { background-color: #dcfce7; color: #16a34a; }
+        .status-ongoing { background-color: #bfdbfe; color: #1d4ed8; } /* New style for 'Ongoing' */
+        .status-missed { background-color: #fecaca; color: #b91c1c; } /* New style for 'Missed' */
+
+        .stress-scale {
+            background: linear-gradient(90deg, #10b981 0%, #f59e0b 50%, #ef4444 100%);
+            height: 20px;
+            border-radius: 10px;
+        }
+        .modal {
+            backdrop-filter: blur(8px);
+            background-color: rgba(0, 0, 0, 0.5);
+        }
+        .animate-fade-in {
+            animation: fadeIn 0.5s ease-in-out;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .progress-ring {
+            transform: rotate(-90deg);
+        }
+        .progress-ring-circle {
+            stroke-dasharray: 251.2;
+            stroke-dashoffset: 251.2;
+            transition: stroke-dashoffset 0.5s;
+        }
+        .todo-header {
+            background: linear-gradient(135deg, #3b82f6 0%, #1e40af 100%);
+        }
+    </style>
+</head>
+<body class="bg-gray-50 font-sans">
+    <!-- Header -->
+    <header class="gradient-bg text-white shadow-lg">
+        <div class="container mx-auto px-6 py-4">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center space-x-4">
+                    <div class="bg-white bg-opacity-20 p-3 rounded-lg">
+                        <i class="fas fa-user-graduate text-2xl"></i>
+                    </div>
+                    <div>
+                        <h1 class="text-2xl font-bold">My Academic Tracker</h1>
+                        <p class="text-blue-100">Personal Progress Dashboard</p>
+                    </div>
+                </div>
+                <nav class="hidden md:flex space-x-6">
+                    <button onclick="showSection('dashboard')" class="nav-btn hover:text-blue-200 transition-colors font-semibold">Dashboard</button>
+                    <button onclick="showSection('planning')" class="nav-btn hover:text-blue-200 transition-colors">Planning</button>
+                    <button onclick="showSection('scores')" class="nav-btn hover:text-blue-200 transition-colors">My Scores</button>
+                    <button onclick="showSection('stress')" class="nav-btn hover:text-blue-200 transition-colors">Wellness</button>
+                    <button onclick="showSection('settings')" class="nav-btn hover:text-blue-200 transition-colors">Settings</button>
+                    <button onclick="logout()" class="nav-btn hover:text-blue-200 transition-colors">Logout</button>
+                </nav>
+                <div class="md:hidden">
+                    <button onclick="toggleMobileMenu()" class="text-white">
+                        <i class="fas fa-bars text-xl"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Mobile Menu -->
+    <div id="mobileMenu" class="hidden md:hidden bg-white shadow-lg">
+        <div class="px-6 py-4 space-y-2">
+            <button onclick="showSection('dashboard')" class="block w-full text-left p-2 hover:bg-gray-100 rounded">Dashboard</button>
+            <button onclick="showSection('planning')" class="block w-full text-left p-2 hover:bg-gray-100 rounded">Planning</button>
+            <button onclick="showSection('scores')" class="block w-full text-left p-2 hover:bg-gray-100 rounded">My Scores</button>
+            <button onclick="showSection('stress')" class="block w-full text-left p-2 hover:bg-gray-100 rounded">Wellness</button>
+            <button onclick="showSection('settings')" class="block w-full text-left p-2 hover:bg-gray-100 rounded">Settings</button>
+            <button onclick="logout()" class="block w-full text-left p-2 hover:bg-gray-100 rounded">Logout</button>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <main class="container mx-auto px-6 py-8">
+        <!-- Dashboard Section -->
+        <section id="dashboard" class="section animate-fade-in">
+            <!-- Welcome Message -->
+            <div class="bg-white rounded-xl shadow-lg p-6 mb-8">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <h2 class="text-2xl font-bold text-gray-800">Welcome back, <span id="loggedInDisplayName">Student</span>!</h2>
+                        <p class="text-gray-600">Here's your academic progress overview</p>
+                    </div>
+                    <div class="text-right">
+                        <p class="text-sm text-gray-500">Today's Date</p>
+                        <p class="text-lg font-semibold text-gray-800" id="currentDate"></p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Quick Stats -->
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+                <div class="bg-white p-6 rounded-xl shadow-lg card-hover">
+                    <div class="flex items-center">
+                        <div class="bg-blue-500 text-white p-3 rounded-lg mr-4">
+                            <i class="fas fa-tasks text-xl"></i>
+                        </div>
+                        <div>
+                            <p class="text-gray-600 text-sm">Pending Tasks</p>
+                            <p class="text-2xl font-bold text-gray-800" id="pendingTasks">0</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="bg-white p-6 rounded-xl shadow-lg card-hover">
+                    <div class="flex items-center">
+                        <div class="bg-green-500 text-white p-3 rounded-lg mr-4">
+                            <i class="fas fa-chart-line text-xl"></i>
+                        </div>
+                        <div>
+                            <p class="text-gray-600 text-sm">Overall Average</p>
+                            <p class="text-2xl font-bold text-gray-800" id="overallAverage">--</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="bg-white p-6 rounded-xl shadow-lg card-hover">
+                    <div class="flex items-center">
+                        <div class="bg-purple-500 text-white p-3 rounded-lg mr-4">
+                            <i class="fas fa-check-circle text-xl"></i>
+                        </div>
+                        <div>
+                            <p class="text-gray-600 text-sm">Completion Rate</p>
+                            <p class="text-2xl font-bold text-gray-800" id="completionRate">0%</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="bg-white p-6 rounded-xl shadow-lg card-hover">
+                    <div class="flex items-center">
+                        <div class="bg-orange-500 text-white p-3 rounded-lg mr-4">
+                            <i class="fas fa-brain text-xl"></i>
+                        </div>
+                        <div>
+                            <p class="text-gray-600 text-sm">Stress Level</p>
+                            <p class="text-2xl font-bold text-gray-800" id="currentStress">--/11</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Quick Progress Overview -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+                <div class="bg-white p-6 rounded-xl shadow-lg">
+                    <h3 class="text-xl font-bold text-gray-800 mb-4">Course Progress</h3>
+                    <div class="chart-container" style="position: relative; height:300px; width:100%">
+                        <canvas id="courseProgressChart"></canvas>
+                    </div>
+                    <div id="courseProgressPlaceholder" class="text-center text-gray-500 py-8 hidden">
+                        <i class="fas fa-chart-pie text-4xl mb-4 opacity-50"></i>
+                        <p>Add some tasks to see your course progress</p>
+                    </div>
+                </div>
+                <!-- Removed "Recent Scores Trend" from here -->
+            </div>
+
+            <!-- Upcoming Tasks Preview -->
+            <div class="bg-white rounded-xl shadow-lg p-6">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-xl font-bold text-gray-800">Upcoming Deadlines</h3>
+                    <button onclick="showSection('planning')" class="text-blue-600 hover:text-blue-800 text-sm">View All Tasks</button>
+                </div>
+                <div class="space-y-3" id="upcomingTasks">
+                    <div class="text-center text-gray-500 py-8">
+                        <i class="fas fa-calendar-plus text-4xl mb-4 opacity-50"></i>
+                        <p>No upcoming tasks. Add some tasks in the Planning section!</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Planning Section -->
+        <section id="planning" class="section animate-fade-in">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-3xl font-bold text-gray-800">Planning & Goal Setting</h2>
+                <button onclick="showAddTaskModal()" class="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors">
+                    <i class="fas fa-plus mr-2"></i>Add Task
+                </button>
+            </div>
+
+            <!-- TO-DO LIST (Matching the image style) -->
+            <div class="bg-white rounded-xl shadow-lg overflow-hidden mb-8">
+                <div class="todo-header text-white p-4">
+                    <h3 class="text-xl font-bold text-center tracking-wider">TO-DO LIST</h3>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="min-w-full">
+                        <thead class="bg-blue-100">
+                            <tr>
+                                <th class="px-4 py-3 text-left text-sm font-semibold text-blue-800 w-12">#</th>
+                                <th class="px-4 py-3 text-left text-sm font-semibold text-blue-800">COURSE</th>
+                                <th class="px-4 py-3 text-left text-sm font-semibold text-blue-800">TASK</th>
+                                <th class="px-4 py-3 text-left text-sm font-semibold text-blue-800">DUE DATE</th>
+                                <th class="px-4 py-3 text-left text-sm font-semibold text-blue-800">STATUS</th>
+                                <th class="px-4 py-3 text-left text-sm font-semibold text-blue-800">ACTIONS</th>
+                            </tr>
+                        </thead>
+                        <tbody id="todoTableBody">
+                            <tr>
+                                <td colspan="6" class="px-4 py-8 text-center text-gray-500">
+                                    <i class="fas fa-list-ul text-4xl mb-4 opacity-50"></i>
+                                    <p>No tasks yet. Click "Add Task" to get started!</p>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Goals & Progress -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div class="bg-white p-6 rounded-xl shadow-lg">
+                    <h3 class="text-xl font-bold text-gray-800 mb-4">My Current Goals</h3>
+                    <div class="space-y-4">
+                        <div class="border-l-4 border-blue-500 pl-4 bg-blue-50 p-3 rounded">
+                            <h4 class="font-semibold text-blue-800">Set Your First Goal</h4>
+                            <p class="text-gray-600 text-sm">Add tasks to track your academic progress</p>
+                            <div class="w-full bg-gray-200 rounded-full h-2 mt-2">
+                                <div class="bg-blue-500 h-2 rounded-full" style="width: 0%"></div>
+                            </div>
+                            <p class="text-xs text-gray-500 mt-1">0% progress</p>
+                        </div>
+                        <div class="border-l-4 border-green-500 pl-4 bg-green-50 p-3 rounded">
+                            <h4 class="font-semibold text-green-800">Complete All Assignments On Time</h4>
+                            <p class="text-gray-600 text-sm">Target: 100% | Current: 0%</p>
+                            <div class="w-full bg-gray-200 rounded-full h-2 mt-2">
+                                <div class="bg-green-500 h-2 rounded-full" style="width: 0%"></div>
+                            </div>
+                            <p class="text-xs text-gray-500 mt-1">0% completion rate</p>
+                        </div>
+                        <div class="border-l-4 border-purple-500 pl-4 bg-purple-50 p-3 rounded">
+                            <h4 class="font-semibold text-purple-800">Maintain Work-Life Balance</h4>
+                            <p class="text-gray-600 text-sm">Target: Stress Level < 5 | Current: --</p>
+                            <div class="w-full bg-gray-200 rounded-full h-2 mt-2">
+                                <div class="bg-purple-500 h-2 rounded-full" style="width: 0%"></div>
+                            </div>
+                            <p class="text-xs text-gray-500 mt-1">No stress recorded yet</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="bg-white p-6 rounded-xl shadow-lg">
+                    <h3 class="text-xl font-bold text-gray-800 mb-4">This Week's Schedule</h3>
+                    <div class="space-y-3" id="weeklySchedule">
+                        <div class="text-center text-gray-500 py-8">
+                            <i class="fas fa-calendar-week text-4xl mb-4 opacity-50"></i>
+                            <p>Add tasks with due dates to see your weekly schedule</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Scores Section -->
+        <section id="scores" class="section hidden animate-fade-in">
+            <h2 class="text-3xl font-bold text-gray-800 mb-6">My Academic Scores</h2>
+
+            <!-- Course Scores Overview -->
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8" id="courseScoresOverview">
+                <!-- Course cards will be dynamically loaded here -->
+                <div class="bg-white p-6 rounded-xl shadow-lg text-center card-hover">
+                    <div class="text-3xl font-bold text-gray-400 mb-2">--</div>
+                    <h3 class="font-semibold text-gray-800">No Courses Yet</h3>
+                    <div class="mt-2 text-sm text-gray-500">
+                        <i class="fas fa-plus mr-1"></i>Add a course via tasks
+                    </div>
+                    <div class="w-full bg-gray-200 rounded-full h-2 mt-3">
+                        <div class="bg-blue-500 h-2 rounded-full" style="width: 0%"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Detailed Score Analysis -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+                <div class="bg-white p-6 rounded-xl shadow-lg">
+                    <h3 class="text-xl font-bold text-gray-800 mb-4">Score Distribution</h3>
+                    <div class="chart-container" style="position: relative; height:300px; width:100%">
+                        <canvas id="scoreDistributionChart"></canvas>
+                    </div>
+                    <div id="scoreDistributionPlaceholder" class="text-center text-gray-500 py-8 hidden">
+                        <i class="fas fa-chart-bar text-4xl mb-4 opacity-50"></i>
+                        <p>Add some scores to see distribution</p>
+                    </div>
+                </div>
+                <!-- Removed "Performance Trends" from here -->
+            </div>
+
+            <!-- Assignment Breakdown -->
+            <div class="bg-white rounded-xl shadow-lg p-6">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-xl font-bold text-gray-800">Recent Assignment Scores</h3>
+                    <button onclick="showAddScoreModal()" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 text-sm">
+                        <i class="fas fa-plus mr-2"></i>Add Score
+                    </button>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="min-w-full">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Assignment</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Course</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Score</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Grade</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="assignmentScoresBody" class="bg-white divide-y divide-gray-200">
+                            <tr>
+                                <td colspan="6" class="px-6 py-8 text-center text-gray-500">
+                                    <i class="fas fa-graduation-cap text-4xl mb-4 opacity-50"></i>
+                                    <p>No scores recorded yet. Add your first assignment score!</p>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <!-- Stress/Wellness Section -->
+        <section id="stress" class="section hidden animate-fade-in">
+            <h2 class="text-3xl font-bold text-gray-800 mb-6">Wellness & Stress Monitoring</h2>
+
+            <!-- Current Stress Level -->
+            <div class="bg-white rounded-xl shadow-lg p-6 mb-8">
+                <h3 class="text-xl font-bold text-gray-800 mb-4">Perceived Stress Scale (SNRS-11)</h3>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                        <h4 class="font-semibold mb-3">Current Stress Level</h4>
+                        <div class="text-center">
+                            <div class="text-6xl font-bold text-gray-400 mb-2" id="currentStressLevel">--</div>
+                            <p class="text-gray-600">out of 11</p>
+                            <p class="text-sm text-gray-500 mt-2" id="stressLevelText">No stress recorded yet</p>
+                        </div>
+                        <div class="mt-4">
+                            <div class="stress-scale relative">
+                                <div class="absolute left-0 top-0 bg-white h-full rounded-full border-2 border-gray-800" style="width: 0%;"></div>
+                            </div>
+                            <div class="flex justify-between text-xs text-gray-600 mt-1">
+                                <span>No Stress</span>
+                                <span>Moderate</span>
+                                <span>High Stress</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div>
+                        <h4 class="font-semibold mb-3">Stress Level History</h4>
+                        <div class="chart-container" style="position: relative; height:200px; width:100%">
+                            <canvas id="stressHistoryChart"></canvas>
+                        </div>
+                        <div id="stressHistoryPlaceholder" class="text-center text-gray-500 py-8 hidden">
+                            <i class="fas fa-chart-area text-4xl mb-4 opacity-50"></i>
+                            <p>Start tracking daily to see your stress history</p>
+                        </div>
+                        <div class="mt-4 space-y-2">
+                            <div class="flex justify-between items-center p-2 bg-green-50 rounded">
+                                <span class="text-sm text-green-700">Low Stress Days</span>
+                                <span class="bg-green-500 text-white px-2 py-1 rounded text-sm" id="lowStressDays">0 days</span>
+                            </div>
+                            <div class="flex justify-between items-center p-2 bg-yellow-50 rounded">
+                                <span class="text-sm text-yellow-700">Moderate Stress Days</span>
+                                <span class="bg-yellow-500 text-white px-2 py-1 rounded text-sm" id="moderateStressDays">0 days</span>
+                            </div>
+                            <div class="flex justify-between items-center p-2 bg-red-50 rounded">
+                                <span class="text-sm text-red-700">High Stress Days</span>
+                                <span class="bg-red-500 text-white px-2 py-1 rounded text-sm" id="highStressDays">0 days</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Wellness Tools -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div class="bg-white p-6 rounded-xl shadow-lg">
+                    <h3 class="text-xl font-bold text-gray-800 mb-4">Daily Wellness Check</h3>
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-gray-700 text-sm font-medium mb-2">How are you feeling today? (1-11)</label>
+                            <input type="range" min="1" max="11" value="4" id="dailyStressSlider" 
+                                   class="w-full h-2 bg-gradient-to-r from-green-400 via-yellow-400 to-red-400 rounded-lg">
+                            <div class="flex justify-between text-xs text-gray-600 mt-1">
+                                <span>1 (Great)</span>
+                                <span id="sliderValue">4</span>
+                                <span>11 (Very Stressed)</span>
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-gray-700 text-sm font-medium mb-2">What's causing stress?</label>
+                            <div class="space-y-2">
+                                <label class="flex items-center">
+                                    <input type="checkbox" class="mr-2" value="Upcoming deadlines"> Upcoming deadlines
+                                </label>
+                                <label class="flex items-center">
+                                    <input type="checkbox" class="mr-2" value="Difficult coursework"> Difficult coursework
+                                </label>
+                                <label class="flex items-center">
+                                    <input type="checkbox" class="mr-2" value="Time management"> Time management
+                                </label>
+                                <label class="flex items-center">
+                                    <input type="checkbox" class="mr-2" value="Social pressures"> Social pressures
+                                </label>
+                                <label class="flex items-center">
+                                    <input type="checkbox" class="mr-2" value="Other"> Other (specify)
+                                </label>
+                                <input type="text" id="otherStressCause" class="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 hidden" placeholder="Specify other cause">
+                            </div>
+                        </div>
+                        <button onclick="recordStressLevel()" class="w-full bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700">
+                            Record Today's Entry
+                        </button>
+                    </div>
+                </div>
+                <div class="bg-white p-6 rounded-xl shadow-lg">
+                    <h3 class="text-xl font-bold text-gray-800 mb-4">Stress Management Tips</h3>
+                    <div class="space-y-3">
+                        <div class="p-3 bg-blue-50 rounded-lg border-l-4 border-blue-400">
+                            <h4 class="font-semibold text-blue-800">Take Regular Breaks</h4>
+                            <p class="text-sm text-blue-700">Use the 25/5 rule: Study for 25 minutes, break for 5</p>
+                        </div>
+                        <div class="p-3 bg-green-50 rounded-lg border-l-4 border-green-400">
+                            <h4 class="font-semibold text-green-800">Practice Deep Breathing</h4>
+                            <p class="text-sm text-green-700">Try 4-7-8 breathing: Inhale 4, hold 7, exhale 8</p>
+                        </div>
+                        <div class="p-3 bg-purple-50 rounded-lg border-l-4 border-purple-400">
+                            <h4 class="font-semibold text-purple-800">Stay Organized</h4>
+                            <p class="text-sm text-purple-700">Use your TO-DO list to break tasks into smaller steps</p>
+                        </div>
+                        <div class="p-3 bg-orange-50 rounded-lg border-l-4 border-orange-400">
+                            <h4 class="font-semibold text-orange-800">Get Enough Sleep</h4>
+                            <p class="text-sm text-orange-700">Aim for 7-9 hours per night for optimal performance</p>
+                        </div>
+                    </div>
+                    <div class="mt-4 p-3 bg-yellow-50 rounded-lg">
+                        <p class="text-sm text-yellow-700">
+                            <i class="fas fa-lightbulb mr-1"></i>
+                            <strong>Remember:</strong> It's normal to feel stressed sometimes. The key is managing it effectively!
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Settings Section -->
+        <section id="settings" class="section hidden animate-fade-in">
+            <h2 class="text-3xl font-bold text-gray-800 mb-6">Settings</h2>
+
+            <div class="bg-white rounded-xl shadow-lg p-6 mb-8">
+                <h3 class="text-xl font-bold text-gray-800 mb-4">Personal Information</h3>
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-gray-700 text-sm font-medium mb-2">Display Name</label>
+                        <input type="text" id="displayNameInput" class="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Enter your display name">
+                    </div>
+                    <button onclick="saveDisplayName()" class="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700">Save Display Name</button>
+                </div>
+            </div>
+
+            <div class="bg-white rounded-xl shadow-lg p-6">
+                <h3 class="text-xl font-bold text-gray-800 mb-4">Data Management</h3>
+                <p class="text-gray-600 mb-4">This action will permanently delete all your tasks, scores, stress history, and courses for the current user. This cannot be undone.</p>
+                <button onclick="resetAllProgress()" class="bg-red-600 text-white px-6 py-2 rounded-lg hover:bg-red-700">Reset All Progress</button>
+            </div>
+        </section>
+    </main>
+
+    <!-- Login Modal -->
+    <div id="loginModal" class="fixed inset-0 modal z-50 flex items-center justify-center">
+        <div class="bg-white rounded-xl shadow-xl w-full max-w-md p-8">
+            <h3 class="text-2xl font-bold text-gray-800 mb-6 text-center">Welcome to Academic Tracker</h3>
+            <form id="loginForm">
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-gray-700 text-sm font-medium mb-2">Username</label>
+                        <input type="text" id="loginUsername" required class="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Enter your username">
+                    </div>
+                    <div>
+                        <label class="block text-gray-700 text-sm font-medium mb-2">Password</label>
+                        <input type="password" id="loginPassword" required class="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Enter your password">
+                    </div>
+                </div>
+                <div class="flex flex-col space-y-3 mt-6">
+                    <button type="submit" class="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 font-semibold">Login</button>
+                    <button type="button" onclick="showRegisterModal()" class="bg-gray-200 text-gray-800 px-6 py-3 rounded-lg hover:bg-gray-300 font-semibold">Register</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Register Modal -->
+    <div id="registerModal" class="fixed inset-0 modal z-50 hidden flex items-center justify-center">
+        <div class="bg-white rounded-xl shadow-xl w-full max-w-md p-8">
+            <h3 class="text-2xl font-bold text-gray-800 mb-6 text-center">Register New Account</h3>
+            <form id="registerForm">
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-gray-700 text-sm font-medium mb-2">Username</label>
+                        <input type="text" id="registerUsername" required class="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Choose a username">
+                    </div>
+                    <div>
+                        <label class="block text-gray-700 text-sm font-medium mb-2">Password</label>
+                        <input type="password" id="registerPassword" required class="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Choose a password">
+                    </div>
+                </div>
+                <div class="flex justify-end space-x-3 mt-6">
+                    <button type="button" onclick="hideRegisterModal()" class="px-4 py-2 text-gray-600 hover:text-gray-800">Cancel</button>
+                    <button type="submit" class="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700">Register</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Add Task Modal -->
+    <div id="addTaskModal" class="fixed inset-0 modal z-50 hidden">
+        <div class="flex items-center justify-center min-h-screen p-4">
+            <div class="bg-white rounded-xl shadow-xl w-full max-w-md">
+                <div class="p-6">
+                    <h3 class="text-xl font-bold text-gray-800 mb-4">Add New Task</h3>
+                    <form id="addTaskForm">
+                        <div class="space-y-4">
+                            <div>
+                                <label class="block text-gray-700 text-sm font-medium mb-2">Course</label>
+                                <select id="taskCourse" required class="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                    <option value="">Select Course</option>
+                                    <!-- Options will be dynamically loaded here -->
+                                </select>
+                                <button type="button" onclick="showAddCourseModal()" class="mt-2 text-blue-600 hover:text-blue-800 text-sm">
+                                    <i class="fas fa-plus mr-1"></i>Add New Course
+                                </button>
+                            </div>
+                            <div>
+                                <label class="block text-gray-700 text-sm font-medium mb-2">Task Description</label>
+                                <input type="text" id="taskDescription" required class="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="e.g., Concept paper, Math homework...">
+                            </div>
+                            <div>
+                                <label class="block text-gray-700 text-sm font-medium mb-2">Due Date</label>
+                                <input type="date" id="taskDueDate" required class="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            </div>
+                            <div>
+                                <label class="block text-gray-700 text-sm font-medium mb-2">Priority</label>
+                                <select id="taskPriority" class="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                    <option value="LOW">Low</option>
+                                    <option value="MEDIUM">Medium</option>
+                                    <option value="HIGH">High</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="flex justify-end space-x-3 mt-6">
+                            <button type="button" onclick="hideAddTaskModal()" class="px-4 py-2 text-gray-600 hover:text-gray-800">Cancel</button>
+                            <button type="submit" class="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700">Add Task</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Edit Task Modal -->
+    <div id="editTaskModal" class="fixed inset-0 modal z-50 hidden">
+        <div class="flex items-center justify-center min-h-screen p-4">
+            <div class="bg-white rounded-xl shadow-xl w-full max-w-md">
+                <div class="p-6">
+                    <h3 class="text-xl font-bold text-gray-800 mb-4">Edit Task</h3>
+                    <form id="editTaskForm">
+                        <input type="hidden" id="editTaskIndex">
+                        <div class="space-y-4">
+                            <div>
+                                <label class="block text-gray-700 text-sm font-medium mb-2">Course</label>
+                                <input type="text" id="editTaskCourse" class="w-full p-3 border border-gray-300 rounded-lg bg-gray-100" readonly>
+                            </div>
+                            <div>
+                                <label class="block text-gray-700 text-sm font-medium mb-2">Task Description</label>
+                                <input type="text" id="editTaskDescription" required class="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            </div>
+                            <div>
+                                <label class="block text-gray-700 text-sm font-medium mb-2">Due Date</label>
+                                <input type="date" id="editTaskDueDate" required class="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            </div>
+                            <div>
+                                <label class="block text-gray-700 text-sm font-medium mb-2">Priority</label>
+                                <select id="editTaskPriority" class="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                    <option value="LOW">Low</option>
+                                    <option value="MEDIUM">Medium</option>
+                                    <option value="HIGH">High</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-gray-700 text-sm font-medium mb-2">Status</label>
+                                <select id="editTaskStatus" class="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                    <option value="No Progress">No Progress</option>
+                                    <option value="Ongoing">Ongoing</option>
+                                    <option value="Done">Done</option>
+                                    <option value="Missed">Missed</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="flex justify-end space-x-3 mt-6">
+                            <button type="button" onclick="hideEditTaskModal()" class="px-4 py-2 text-gray-600 hover:text-gray-800">Cancel</button>
+                            <button type="submit" class="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700">Save Changes</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Course Modal -->
+    <div id="addCourseModal" class="fixed inset-0 modal z-50 hidden">
+        <div class="flex items-center justify-center min-h-screen p-4">
+            <div class="bg-white rounded-xl shadow-xl w-full max-w-md">
+                <div class="p-6">
+                    <h3 class="text-xl font-bold text-gray-800 mb-4">Add New Course</h3>
+                    <form id="addCourseForm">
+                        <div class="space-y-4">
+                            <div>
+                                <label class="block text-gray-700 text-sm font-medium mb-2">Course Name</label>
+                                <input type="text" id="newCourseName" required class="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="e.g., Calculus I, World History">
+                            </div>
+                        </div>
+                        <div class="flex justify-end space-x-3 mt-6">
+                            <button type="button" onclick="hideAddCourseModal()" class="px-4 py-2 text-gray-600 hover:text-gray-800">Cancel</button>
+                            <button type="submit" class="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700">Add Course</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Score Modal -->
+    <div id="addScoreModal" class="fixed inset-0 modal z-50 hidden">
+        <div class="flex items-center justify-center min-h-screen p-4">
+            <div class="bg-white rounded-xl shadow-xl w-full max-w-md">
+                <div class="p-6">
+                    <h3 class="text-xl font-bold text-gray-800 mb-4">Add New Score</h3>
+                    <form id="addScoreForm">
+                        <div class="space-y-4">
+                            <div>
+                                <label class="block text-gray-700 text-sm font-medium mb-2">Assignment Name</label>
+                                <input type="text" id="scoreAssignmentName" required class="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="e.g., Midterm Exam, Homework 3">
+                            </div>
+                            <div>
+                                <label class="block text-gray-700 text-sm font-medium mb-2">Course</label>
+                                <select id="scoreCourse" required class="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                    <option value="">Select Course</option>
+                                    <!-- Options will be dynamically loaded here -->
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-gray-700 text-sm font-medium mb-2">Score (e.g., 85, 92.5)</label>
+                                <input type="number" step="0.1" min="0" max="100" id="scoreValue" required class="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Enter score">
+                            </div>
+                            <div>
+                                <label class="block text-gray-700 text-sm font-medium mb-2">Date</label>
+                                <input type="date" id="scoreDate" required class="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            </div>
+                        </div>
+                        <div class="flex justify-end space-x-3 mt-6">
+                            <button type="button" onclick="hideAddScoreModal()" class="px-4 py-2 text-gray-600 hover:text-gray-800">Cancel</button>
+                            <button type="submit" class="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700">Add Score</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+    <script>
+        // --- GLOBAL DATA VARIABLES ---
+        // These will be loaded/saved from/to localStorage based on the logged-in user
+        let currentUser = null; // Stores the username of the currently logged-in user
+        let currentDisplayName = "Student"; // Default display name
+        let tasks = [];
+        let assignments = [];
+        // Modified stressHistory to store objects with date and level
+        let stressHistory = []; 
+        let courses = []; // User-defined courses
+
+        // Chart instances
+        let courseProgressChart = null;
+        let scoreDistributionChart = null;
+        let stressHistoryChart = null; // New chart instance for stress history
+
+        // --- INITIALIZATION ---
+        document.addEventListener('DOMContentLoaded', function() {
+            updateCurrentDate();
+            checkLoginStatus(); // Check if a user is already logged in
+            setupStressSlider();
+
+            // Event listener for "Other" checkbox in stress section
+            document.querySelectorAll('#stress input[type="checkbox"]').forEach(checkbox => {
+                checkbox.addEventListener('change', function() {
+                    const otherStressCauseInput = document.getElementById('otherStressCause');
+                    if (this.value === 'Other' && this.checked) {
+                        otherStressCauseInput.classList.remove('hidden');
+                    } else if (this.value === 'Other' && !this.checked) {
+                        otherStressCauseInput.classList.add('hidden');
+                        otherStressCauseInput.value = ''; // Clear input if unchecked
+                    }
+                });
+            });
+        });
+
+        // --- AUTHENTICATION FUNCTIONS (Simulated with localStorage - NOT SECURE FOR REAL APPS) ---
+        function checkLoginStatus() {
+            currentUser = localStorage.getItem('loggedInUser');
+            if (currentUser) {
+                loadUserData(currentUser); // Load data for the logged-in user
+                document.body.classList.remove('overflow-hidden'); // Allow scrolling
+                document.getElementById('loginModal').classList.add('hidden'); // Hide login modal
+                showSection('dashboard'); // Show dashboard after login
+            } else {
+                // No user logged in, show login modal
+                document.body.classList.add('overflow-hidden'); // Prevent scrolling behind modal
+                document.getElementById('loginModal').classList.remove('hidden');
+            }
+        }
+
+        function login(username, password) {
+            const users = JSON.parse(localStorage.getItem('users')) || {};
+            if (users[username] && users[username].password === password) { // Insecure password check
+                currentUser = username;
+                localStorage.setItem('loggedInUser', username);
+                loadUserData(username);
+                document.body.classList.remove('overflow-hidden');
+                document.getElementById('loginModal').classList.add('hidden');
+                showSection('dashboard');
+                alert('Login successful!');
+            } else {
+                alert('Invalid username or password.');
+            }
+        }
+
+        function register(username, password) {
+            let users = JSON.parse(localStorage.getItem('users')) || {};
+            if (users[username]) {
+                alert('Username already exists. Please choose another.');
+            } else {
+                users[username] = { password: password, displayName: username }; // Store display name on registration
+                localStorage.setItem('users', JSON.stringify(users));
+                alert('Registration successful! You can now log in.');
+                hideRegisterModal();
+                showLoginModal();
+            }
+        }
+
+        function logout() {
+            if (confirm('Are you sure you want to log out?')) {
+                saveUserData(currentUser); // Save current user's data before logging out
+                localStorage.removeItem('loggedInUser');
+                currentUser = null;
+                currentDisplayName = "Student"; // Reset display name
+                // Clear current data
+                tasks = [];
+                assignments = [];
+                stressHistory = [];
+                courses = [];
+                // Reset UI
+                renderTodoTable();
+                renderUpcomingTasks();
+                renderAssignmentScores();
+                renderCourseScoresOverview();
+                updateStats();
+                renderCourseProgressChart(); // Re-render charts
+                renderScoreDistributionChart(); // Re-render charts
+                renderWeeklySchedule(); // Re-render weekly schedule
+                renderStressHistoryChart(); // Re-render stress history chart
+                // Show login modal
+                document.body.classList.add('overflow-hidden');
+                document.getElementById('loginModal').classList.remove('hidden');
+                alert('Logged out successfully.');
+            }
+        }
+
+        // --- DATA PERSISTENCE FUNCTIONS (Using localStorage - Client-side only) ---
+        function saveUserData(username) {
+            if (!username) return; // Don't save if no user is logged in
+            const userData = {
+                displayName: currentDisplayName, // Save display name
+                tasks: tasks,
+                assignments: assignments,
+                stressHistory: stressHistory,
+                courses: courses
+            };
+            localStorage.setItem(`userData_${username}`, JSON.stringify(userData));
+            console.log(`Data saved for ${username}`);
+        }
+
+        function loadUserData(username) {
+            const storedData = localStorage.getItem(`userData_${username}`);
+            if (storedData) {
+                const userData = JSON.parse(storedData);
+                currentDisplayName = userData.displayName || username; // Load display name, default to username
+                tasks = userData.tasks || [];
+                assignments = userData.assignments || [];
+                stressHistory = userData.stressHistory || [];
+                courses = userData.courses || [];
+                console.log(`Data loaded for ${username}`);
+            } else {
+                // If no data found for user, initialize with empty arrays and default display name
+                currentDisplayName = username; // Default display name to username
+                tasks = [];
+                assignments = [];
+                stressHistory = [];
+                courses = [];
+                console.log(`No data found for ${username}, initializing empty.`);
+            }
+            // Update display name on dashboard
+            document.getElementById('loggedInDisplayName').textContent = currentDisplayName;
+            // Re-render all UI components with loaded data
+            renderTodoTable();
+            renderUpcomingTasks();
+            renderAssignmentScores();
+            renderCourseOptions(); // Important for task/score modals
+            renderCourseScoresOverview();
+            updateStats();
+            renderCourseProgressChart(); // Render charts on load
+            renderScoreDistributionChart(); // Render charts on load
+            renderWeeklySchedule(); // Render weekly schedule on load
+            renderStressHistoryChart(); // Render stress history chart on load
+            // Set display name input in settings
+            document.getElementById('displayNameInput').value = currentDisplayName;
+        }
+
+        // --- NAVIGATION FUNCTIONS ---
+        function showSection(sectionName) {
+            document.querySelectorAll('.section').forEach(section => {
+                section.classList.add('hidden');
+            });
+            document.getElementById(sectionName).classList.remove('hidden');
+            
+            document.querySelectorAll('.nav-btn').forEach(btn => {
+                btn.classList.remove('font-semibold'); 
+            });
+            document.querySelector(`.nav-btn[onclick="showSection('${sectionName}')"]`).classList.add('font-semibold');
+
+            document.getElementById('mobileMenu').classList.add('hidden');
+            saveUserData(currentUser); // Save data whenever section changes (good checkpoint)
+        }
+
+        function toggleMobileMenu() {
+            const mobileMenu = document.getElementById('mobileMenu');
+            mobileMenu.classList.toggle('hidden');
+        }
+
+        // --- UTILITY FUNCTIONS ---
+        function updateCurrentDate() {
+            const dateElement = document.getElementById('currentDate');
+            const today = new Date();
+            const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+            dateElement.textContent = today.toLocaleDateString('en-US', options);
+        }
+
+        function getStatusClass(status) {
+            switch (status) {
+                case 'No Progress': return 'status-no-progress';
+                case 'Ongoing': return 'status-ongoing'; 
+                case 'Done': return 'status-completed'; 
+                case 'Missed': return 'status-missed'; 
+                default: return '';
+            }
+        }
+
+        function calculateGrade(score) {
+            if (score >= 90) return 'A';
+            if (score >= 80) return 'B';
+            if (score >= 70) return 'C';
+            if (score >= 60) return 'D';
+            return 'F';
+        }
+
+        // --- RENDERING FUNCTIONS ---
+        function renderTodoTable() {
+            const todoTableBody = document.getElementById('todoTableBody');
+            if (tasks.length === 0) {
+                todoTableBody.innerHTML = `
+                    <tr>
+                        <td colspan="6" class="px-4 py-8 text-center text-gray-500">
+                            <i class="fas fa-list-ul text-4xl mb-4 opacity-50"></i>
+                            <p>No tasks yet. Click "Add Task" to get started!</p>
+                        </td>
+                    </tr>
+                `;
+            } else {
+                todoTableBody.innerHTML = tasks.map((task, index) => `
+                    <tr>
+                        <td class="px-4 py-3 text-sm text-gray-800">${index + 1}</td>
+                        <td class="px-4 py-3 text-sm text-gray-800">${task.course}</td>
+                        <td class="px-4 py-3 text-sm text-gray-800">${task.description}</td>
+                        <td class="px-4 py-3 text-sm text-gray-800">${task.dueDate}</td>
+                        <td class="px-4 py-3 text-sm">
+                            <span class="px-2 py-1 rounded-full text-xs font-semibold ${getStatusClass(task.status)}">
+                                ${task.status}
+                            </span>
+                        </td>
+                        <td class="px-4 py-3 text-sm">
+                            <button onclick="editTask(${index})" class="text-blue-600 hover:text-blue-800 mr-2"><i class="fas fa-edit"></i></button>
+                            <button onclick="deleteTask(${index})" class="text-red-600 hover:text-red-800"><i class="fas fa-trash"></i></button>
+                        </td>
+                    </tr>
+                `).join('');
+            }
+        }
+
+        function renderUpcomingTasks() {
+            const upcomingTasksDiv = document.getElementById('upcomingTasks');
+            const upcoming = tasks.filter(task => new Date(task.dueDate) >= new Date() && task.status !== 'Done' && task.status !== 'Missed')
+                                 .sort((a, b) => new Date(a.dueDate) - new Date(b.dueDate));
+            
+            if (upcoming.length === 0) {
+                upcomingTasksDiv.innerHTML = `
+                    <div class="text-center text-gray-500 py-8">
+                        <i class="fas fa-calendar-plus text-4xl mb-4 opacity-50"></i>
+                        <p>No upcoming tasks. Add some tasks in the Planning section!</p>
+                    </div>
+                `;
+            } else {
+                upcomingTasksDiv.innerHTML = upcoming.slice(0, 3).map(task => `
+                    <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-200">
+                        <div>
+                            <p class="font-semibold text-gray-800">${task.description}</p>
+                            <p class="text-sm text-gray-600">${task.course} - Due: ${task.dueDate}</p>
+                        </div>
+                        <span class="px-2 py-1 rounded-full text-xs font-semibold ${getStatusClass(task.status)}">
+                            ${task.status}
+                        </span>
+                    </div>
+                `).join('');
+            }
+        }
+
+        function renderAssignmentScores() {
+            const assignmentScoresBody = document.getElementById('assignmentScoresBody');
+            if (assignments.length === 0) {
+                assignmentScoresBody.innerHTML = `
+                    <tr>
+                        <td colspan="6" class="px-6 py-8 text-center text-gray-500">
+                            <i class="fas fa-graduation-cap text-4xl mb-4 opacity-50"></i>
+                            <p>No scores recorded yet. Add your first assignment score!</p>
+                        </td>
+                    </tr>
+                `;
+            } else {
+                assignmentScoresBody.innerHTML = assignments.map((assignment, index) => `
+                    <tr>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${assignment.name}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${assignment.course}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${assignment.score}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${assignment.grade}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${assignment.date}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm">
+                            <button onclick="editScore(${index})" class="text-blue-600 hover:text-blue-800 mr-2"><i class="fas fa-edit"></i></button>
+                            <button onclick="deleteScore(${index})" class="text-red-600 hover:text-red-800"><i class="fas fa-trash"></i></button>
+                        </td>
+                    </tr>
+                `).join('');
+            }
+        }
+
+        // --- Course Management Functions ---
+        function renderCourseOptions() {
+            const taskCourseSelect = document.getElementById('taskCourse');
+            const scoreCourseSelect = document.getElementById('scoreCourse'); 
+            
+            taskCourseSelect.innerHTML = '<option value="">Select Course</option>'; 
+            scoreCourseSelect.innerHTML = '<option value="">Select Course</option>'; 
+
+            courses.forEach(course => {
+                const optionTask = document.createElement('option');
+                optionTask.value = course;
+                optionTask.textContent = course;
+                taskCourseSelect.appendChild(optionTask);
+
+                const optionScore = document.createElement('option');
+                optionScore.value = course;
+                optionScore.textContent = course;
+                scoreCourseSelect.appendChild(optionScore);
+            });
+        }
+
+        function renderCourseScoresOverview() {
+            const courseScoresOverviewDiv = document.getElementById('courseScoresOverview');
+            if (courses.length === 0) {
+                courseScoresOverviewDiv.innerHTML = `
+                    <div class="bg-white p-6 rounded-xl shadow-lg text-center card-hover">
+                        <div class="text-3xl font-bold text-gray-400 mb-2">--</div>
+                        <h3 class="font-semibold text-gray-800">No Courses Yet</h3>
+                        <div class="mt-2 text-sm text-gray-500">
+                            <i class="fas fa-plus mr-1"></i>Add a course via tasks
+                        </div>
+                        <div class="w-full bg-gray-200 rounded-full h-2 mt-3">
+                            <div class="bg-blue-500 h-2 rounded-full" style="width: 0%"></div>
+                        </div>
+                    </div>
+                `;
+            } else {
+                const colors = ['blue', 'green', 'purple', 'orange', 'red', 'indigo', 'teal'];
+                let colorIndex = 0;
+
+                courseScoresOverviewDiv.innerHTML = courses.map(course => {
+                    const currentColor = colors[colorIndex % colors.length];
+                    colorIndex++; 
+
+                    const courseAssignments = assignments.filter(a => a.course === course);
+                    const totalScore = courseAssignments.reduce((sum, a) => sum + a.score, 0);
+                    const courseAverage = courseAssignments.length > 0 ? (totalScore / courseAssignments.length).toFixed(1) : '--';
+
+                    const courseTasks = tasks.filter(t => t.course === course);
+                    const completedCourseTasks = courseTasks.filter(t => t.status === 'Done').length; 
+                    const courseProgress = courseTasks.length > 0 ? ((completedCourseTasks / courseTasks.length) * 100).toFixed(0) : 0;
+
+                    return `
+                        <div class="bg-white p-6 rounded-xl shadow-lg text-center card-hover">
+                            <div class="text-3xl font-bold text-${currentColor}-500 mb-2">${courseAverage}</div>
+                            <h3 class="font-semibold text-gray-800">${course}</h3>
+                            <div class="mt-2 text-sm text-gray-500">
+                                ${courseAssignments.length > 0 ? `${courseAssignments.length} assignments` : '<i class="fas fa-plus mr-1"></i>Add first score'}
+                            </div>
+                            <div class="w-full bg-gray-200 rounded-full h-2 mt-3">
+                                <div class="bg-${currentColor}-500 h-2 rounded-full" style="width: ${courseProgress}%"></div>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+            }
+        }
+
+        // --- Chart Rendering Functions ---
+        function renderCourseProgressChart() {
+            const ctx = document.getElementById('courseProgressChart').getContext('2d');
+            const courseProgressPlaceholder = document.getElementById('courseProgressPlaceholder');
+
+            if (courseProgressChart) {
+                courseProgressChart.destroy(); // Destroy existing chart before re-rendering
+            }
+
+            const courseData = {};
+            tasks.forEach(task => {
+                if (!courseData[task.course]) {
+                    courseData[task.course] = { total: 0, completed: 0 };
+                }
+                courseData[task.course].total++;
+                if (task.status === 'Done') {
+                    courseData[task.course].completed++;
+                }
+            });
+
+            const labels = [];
+            const data = [];
+            const backgroundColors = [];
+            const borderColors = [];
+
+            const predefinedColors = [
+                'rgba(75, 192, 192, 0.8)', 'rgba(255, 99, 132, 0.8)', 'rgba(54, 162, 235, 0.8)',
+                'rgba(255, 206, 86, 0.8)', 'rgba(153, 102, 255, 0.8)', 'rgba(255, 159, 64, 0.8)'
+            ];
+            let colorIndex = 0;
+
+            for (const course in courseData) {
+                labels.push(course);
+                data.push(courseData[course].completed / courseData[course].total * 100);
+                backgroundColors.push(predefinedColors[colorIndex % predefinedColors.length]);
+                borderColors.push(predefinedColors[colorIndex % predefinedColors.length].replace('0.8', '1'));
+                colorIndex++;
+            }
+
+            if (labels.length === 0) {
+                courseProgressPlaceholder.classList.remove('hidden');
+                ctx.canvas.classList.add('hidden');
+                return;
+            } else {
+                courseProgressPlaceholder.classList.add('hidden');
+                ctx.canvas.classList.remove('hidden');
+            }
+
+            courseProgressChart = new Chart(ctx, {
+                type: 'pie',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        data: data,
+                        backgroundColor: backgroundColors,
+                        borderColor: borderColors,
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'top',
+                        },
+                        title: {
+                            display: true,
+                            text: 'Task Completion by Course'
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    let label = context.label || '';
+                                    if (label) {
+                                        label += ': ';
+                                    }
+                                    if (context.parsed !== null) {
+                                        label += context.parsed.toFixed(1) + '%';
+                                    }
+                                    return label;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        function renderScoreDistributionChart() {
+            const ctx = document.getElementById('scoreDistributionChart').getContext('2d');
+            const scoreDistributionPlaceholder = document.getElementById('scoreDistributionPlaceholder');
+
+            if (scoreDistributionChart) {
+                scoreDistributionChart.destroy(); // Destroy existing chart before re-rendering
+            }
+
+            const gradeCounts = { 'A': 0, 'B': 0, 'C': 0, 'D': 0, 'F': 0 };
+            assignments.forEach(assignment => {
+                const grade = calculateGrade(assignment.score);
+                if (gradeCounts.hasOwnProperty(grade)) {
+                    gradeCounts[grade]++;
+                }
+            });
+
+            const labels = Object.keys(gradeCounts);
+            const data = Object.values(gradeCounts);
+
+            const backgroundColors = [
+                'rgba(75, 192, 192, 0.8)', // A
+                'rgba(54, 162, 235, 0.8)', // B
+                'rgba(255, 206, 86, 0.8)', // C
+                'rgba(255, 159, 64, 0.8)', // D
+                'rgba(255, 99, 132, 0.8)'  // F
+            ];
+            const borderColors = backgroundColors.map(color => color.replace('0.8', '1'));
+
+            if (assignments.length === 0) {
+                scoreDistributionPlaceholder.classList.remove('hidden');
+                ctx.canvas.classList.add('hidden');
+                return;
+            } else {
+                scoreDistributionPlaceholder.classList.add('hidden');
+                ctx.canvas.classList.remove('hidden');
+            }
+
+            scoreDistributionChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Number of Assignments',
+                        data: data,
+                        backgroundColor: backgroundColors,
+                        borderColor: borderColors,
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: false,
+                        },
+                        title: {
+                            display: true,
+                            text: 'Score Distribution by Grade'
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                precision: 0
+                            },
+                            title: {
+                                display: true,
+                                text: 'Number of Assignments'
+                            }
+                        },
+                        x: {
+                            title: {
+                                display: true,
+                                text: 'Grade'
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // --- Weekly Schedule Function ---
+        function renderWeeklySchedule() {
+            const weeklyScheduleDiv = document.getElementById('weeklySchedule');
+            const today = new Date();
+            today.setHours(0, 0, 0, 0); // Normalize to start of day
+
+            // Find the start of the current week (Sunday)
+            const startOfWeek = new Date(today);
+            startOfWeek.setDate(today.getDate() - today.getDay()); // today.getDay() returns 0 for Sunday, 1 for Monday, etc.
+
+            // Find the end of the current week (Saturday)
+            const endOfWeek = new Date(startOfWeek);
+            endOfWeek.setDate(startOfWeek.getDate() + 6);
+            endOfWeek.setHours(23, 59, 59, 999); // Set to end of Saturday
+
+            const weeklyTasks = tasks.filter(task => {
+                const taskDueDate = new Date(task.dueDate);
+                taskDueDate.setHours(0, 0, 0, 0); // Normalize task due date
+                return taskDueDate >= startOfWeek && taskDueDate <= endOfWeek && task.status !== 'Done' && task.status !== 'Missed';
+            }).sort((a, b) => new Date(a.dueDate) - new Date(b.dueDate));
+
+            if (weeklyTasks.length === 0) {
+                weeklyScheduleDiv.innerHTML = `
+                    <div class="text-center text-gray-500 py-8">
+                        <i class="fas fa-calendar-week text-4xl mb-4 opacity-50"></i>
+                        <p>No tasks with due dates for this week.</p>
+                    </div>
+                `;
+                return;
+            }
+
+            let scheduleHtml = '';
+            let currentDay = null;
+            const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+
+            weeklyTasks.forEach(task => {
+                const taskDate = new Date(task.dueDate);
+                const dayIndex = taskDate.getDay();
+                const dayName = dayNames[dayIndex];
+                const formattedDate = taskDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+
+                if (dayName !== currentDay) {
+                    if (currentDay !== null) {
+                        scheduleHtml += '</div>'; // Close previous day's tasks div
+                    }
+                    scheduleHtml += `
+                        <div class="mt-4">
+                            <h4 class="font-semibold text-gray-800 border-b pb-1 mb-2">${dayName}, ${formattedDate}</h4>
+                            <div class="space-y-2">
+                    `;
+                    currentDay = dayName;
+                }
+
+                scheduleHtml += `
+                    <div class="flex items-center justify-between p-2 bg-gray-50 rounded-lg border border-gray-200">
+                        <div>
+                            <p class="font-medium text-gray-800">${task.description}</p>
+                            <p class="text-sm text-gray-600">${task.course}</p>
+                        </div>
+                        <span class="px-2 py-1 rounded-full text-xs font-semibold ${getStatusClass(task.status)}">
+                            ${task.status}
+                        </span>
+                    </div>
+                `;
+            });
+            scheduleHtml += '</div>'; // Close the last day's tasks div
+
+            weeklyScheduleDiv.innerHTML = scheduleHtml;
+        }
+
+
+        // --- Stress Management Functions ---
+        function setupStressSlider() {
+            const slider = document.getElementById('dailyStressSlider');
+            const sliderValue = document.getElementById('sliderValue');
+            slider.oninput = function() {
+                sliderValue.textContent = this.value;
+            };
+        }
+
+        function renderStressHistoryChart() {
+            const ctx = document.getElementById('stressHistoryChart').getContext('2d');
+            const stressHistoryPlaceholder = document.getElementById('stressHistoryPlaceholder');
+
+            if (stressHistoryChart) {
+                stressHistoryChart.destroy(); // Destroy existing chart before re-rendering
+            }
+
+            // Sort stress history by date
+            const sortedStressHistory = [...stressHistory].sort((a, b) => new Date(a.date) - new Date(b.date));
+
+            const labels = sortedStressHistory.map(entry => entry.date);
+            const data = sortedStressHistory.map(entry => entry.level);
+
+            if (labels.length === 0) {
+                stressHistoryPlaceholder.classList.remove('hidden');
+                ctx.canvas.classList.add('hidden');
+                return;
+            } else {
+                stressHistoryPlaceholder.classList.add('hidden');
+                ctx.canvas.classList.remove('hidden');
+            }
+
+            stressHistoryChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Stress Level',
+                        data: data,
+                        borderColor: '#667eea',
+                        backgroundColor: 'rgba(102, 126, 234, 0.2)',
+                        fill: true,
+                        tension: 0.3,
+                        pointBackgroundColor: '#667eea',
+                        pointBorderColor: '#fff',
+                        pointHoverBackgroundColor: '#fff',
+                        pointHoverBorderColor: '#667eea'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: false,
+                        },
+                        title: {
+                            display: true,
+                            text: 'Daily Stress Levels Over Time'
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return `Stress Level: ${context.parsed.y}/11`;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            type: 'category',
+                            labels: labels,
+                            title: {
+                                display: true,
+                                text: 'Date'
+                            }
+                        },
+                        y: {
+                            beginAtZero: true,
+                            max: 11,
+                            ticks: {
+                                stepSize: 1
+                            },
+                            title: {
+                                display: true,
+                                text: 'Stress Level (1-11)'
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+
+        function updateStats() {
+            document.getElementById('pendingTasks').textContent = tasks.filter(t => t.status !== 'Done' && t.status !== 'Missed').length;
+            
+            const completedTasks = tasks.filter(t => t.status === 'Done').length;
+            const totalTasks = tasks.length;
+            const completionRate = totalTasks > 0 ? ((completedTasks / totalTasks) * 100).toFixed(0) : 0;
+            document.getElementById('completionRate').textContent = `${completionRate}%`;
+
+            const totalAssignmentsScore = assignments.reduce((sum, a) => sum + a.score, 0);
+            const overallAverage = assignments.length > 0 ? (totalAssignmentsScore / assignments.length).toFixed(1) : '--';
+            document.getElementById('overallAverage').textContent = overallAverage;
+
+            // Get the latest stress level from history
+            const currentStress = stressHistory.length > 0 ? stressHistory[stressHistory.length - 1].level : '--';
+            document.getElementById('currentStress').textContent = `${currentStress}/11`;
+            document.getElementById('currentStressLevel').textContent = currentStress;
+
+            const stressScaleDiv = document.querySelector('.stress-scale div');
+            const stressLevelText = document.getElementById('stressLevelText');
+            const goalStressLevelText = document.querySelector('#planning .border-l-4.border-purple-500 p.text-xs.text-gray-500');
+
+            if (stressHistory.length === 0) {
+                stressScaleDiv.style.width = '0%';
+                stressLevelText.textContent = 'No stress recorded yet';
+                stressLevelText.classList.remove('text-orange-600', 'text-green-600', 'text-red-600');
+                stressLevelText.classList.add('text-gray-500');
+                goalStressLevelText.textContent = 'No stress recorded yet';
+                document.querySelector('#planning .border-l-4.border-purple-500 h4').textContent = 'Maintain Work-Life Balance'; 
+                document.querySelector('#planning .border-l-4.border-purple-500 p.text-gray-600').textContent = 'Target: Stress Level < 5 | Current: --';
+                document.querySelector('#planning .border-l-4.border-purple-500 .bg-purple-500').style.width = '0%';
+
+                document.getElementById('lowStressDays').textContent = '0 days';
+                document.getElementById('moderateStressDays').textContent = '0 days';
+                document.getElementById('highStressDays').textContent = '0 days';
+
+            } else {
+                const stressScaleWidth = (currentStress / 11) * 100;
+                stressScaleDiv.style.width = `${stressScaleWidth}%`;
+                
+                let stressTextColorClass = '';
+                let stressStatusText = '';
+                if (currentStress <= 3) {
+                    stressStatusText = 'Low Stress Level';
+                    stressTextColorClass = 'text-green-600';
+                } else if (currentStress <= 7) {
+                    stressStatusText = 'Moderate Stress Level';
+                    stressTextColorClass = 'text-orange-600';
+                } else {
+                    stressStatusText = 'High Stress Level';
+                    stressTextColorClass = 'text-red-600';
+                }
+                stressLevelText.textContent = stressStatusText;
+                stressLevelText.classList.remove('text-gray-500', 'text-orange-600', 'text-green-600', 'text-red-600');
+                stressLevelText.classList.add(stressTextColorClass);
+
+                document.querySelector('#planning .border-l-4.border-purple-500 p.text-gray-600').textContent = `Target: Stress Level < 5 | Current: ${currentStress}`;
+                document.querySelector('#planning .border-l-4.border-purple-500 .bg-purple-500').style.width = `${(1 - Math.min(currentStress, 11) / 11) * 100}%`; 
+                goalStressLevelText.textContent = stressStatusText.toLowerCase();
+
+                // Calculate stress day counts
+                let lowStressDays = 0;
+                let moderateStressDays = 0;
+                let highStressDays = 0;
+                stressHistory.forEach(entry => {
+                    if (entry.level <= 3) {
+                        lowStressDays++;
+                    } else if (entry.level <= 7) {
+                        moderateStressDays++;
+                    } else {
+                        highStressDays++;
+                    }
+                });
+                document.getElementById('lowStressDays').textContent = `${lowStressDays} days`;
+                document.getElementById('moderateStressDays').textContent = `${moderateStressDays} days`;
+                document.getElementById('highStressDays').textContent = `${highStressDays} days`;
+            }
+            saveUserData(currentUser); 
+        }
+
+        // --- MODAL FUNCTIONS ---
+        function showLoginModal() {
+            document.getElementById('loginModal').classList.remove('hidden');
+            document.getElementById('registerModal').classList.add('hidden');
+            document.getElementById('loginForm').reset();
+        }
+
+        function hideLoginModal() {
+            document.getElementById('loginModal').classList.add('hidden');
+        }
+
+        function showRegisterModal() {
+            document.getElementById('registerModal').classList.remove('hidden');
+            document.getElementById('loginModal').classList.add('hidden');
+            document.getElementById('registerForm').reset();
+        }
+
+        function hideRegisterModal() {
+            document.getElementById('registerModal').classList.add('hidden');
+        }
+
+        function showAddTaskModal() {
+            if (courses.length === 0) {
+                alert('Please add at least one course first before adding a task. You can add a course by clicking "Add New Course" in the task modal.');
+                showAddCourseModal(); 
+                return;
+            }
+            renderCourseOptions(); 
+            document.getElementById('addTaskModal').classList.remove('hidden');
+        }
+
+        function hideAddTaskModal() {
+            document.getElementById('addTaskModal').classList.add('hidden');
+            document.getElementById('addTaskForm').reset(); 
+        }
+
+        function showEditTaskModal(index) {
+            const task = tasks[index];
+            document.getElementById('editTaskIndex').value = index;
+            document.getElementById('editTaskCourse').value = task.course;
+            document.getElementById('editTaskDescription').value = task.description;
+            document.getElementById('editTaskDueDate').value = task.dueDate;
+            document.getElementById('editTaskPriority').value = task.priority;
+            document.getElementById('editTaskStatus').value = task.status;
+            document.getElementById('editTaskModal').classList.remove('hidden');
+        }
+
+        function hideEditTaskModal() {
+            document.getElementById('editTaskModal').classList.add('hidden');
+            document.getElementById('editTaskForm').reset();
+        }
+
+        function showAddCourseModal() {
+            document.getElementById('addCourseModal').classList.remove('hidden');
+            if (!document.getElementById('addTaskModal').classList.contains('hidden')) {
+                document.getElementById('addTaskModal').classList.add('hidden');
+                document.getElementById('addCourseModal').dataset.fromAddTask = 'true'; 
+            }
+        }
+
+        function hideAddCourseModal() {
+            document.getElementById('addCourseModal').classList.add('hidden');
+            document.getElementById('addCourseForm').reset(); 
+            if (document.getElementById('addCourseModal').dataset.fromAddTask === 'true') {
+                document.getElementById('addTaskModal').classList.remove('hidden');
+                delete document.getElementById('addCourseModal').dataset.fromAddTask;
+            }
+        }
+
+        function showAddScoreModal() {
+            if (courses.length === 0) {
+                alert('Please add at least one course first before adding a score. You can add a course by adding a task.');
+                return;
+            }
+            renderCourseOptions(); 
+            document.getElementById('addScoreModal').classList.remove('hidden');
+            document.getElementById('addScoreForm').reset();
+            document.getElementById('scoreDate').valueAsDate = new Date(); 
+        }
+
+        function hideAddScoreModal() {
+            document.getElementById('addScoreModal').classList.add('hidden');
+            document.getElementById('addScoreForm').reset();
+        }
+
+        // --- FORM SUBMISSION HANDLERS ---
+        document.getElementById('loginForm').addEventListener('submit', function(event) {
+            event.preventDefault();
+            const username = document.getElementById('loginUsername').value;
+            const password = document.getElementById('loginPassword').value;
+            login(username, password);
+        });
+
+        document.getElementById('registerForm').addEventListener('submit', function(event) {
+            event.preventDefault();
+            const username = document.getElementById('registerUsername').value;
+            const password = document.getElementById('registerPassword').value;
+            register(username, password);
+        });
+
+        document.getElementById('addTaskForm').addEventListener('submit', function(event) {
+            event.preventDefault(); 
+
+            const taskCourse = document.getElementById('taskCourse').value;
+            const taskDescription = document.getElementById('taskDescription').value;
+            const taskDueDate = document.getElementById('taskDueDate').value;
+            const taskPriority = document.getElementById('taskPriority').value;
+
+            const newTask = {
+                id: tasks.length + 1, 
+                course: taskCourse,
+                description: taskDescription,
+                dueDate: taskDueDate,
+                priority: taskPriority,
+                status: 'No Progress' 
+            };
+
+            tasks.push(newTask);
+            renderTodoTable();
+            renderUpcomingTasks();
+            updateStats();
+            renderCourseProgressChart(); // Update chart
+            renderWeeklySchedule(); // Update weekly schedule
+            hideAddTaskModal();
+            alert('Task added successfully!');
+        });
+
+        document.getElementById('editTaskForm').addEventListener('submit', function(event) {
+            event.preventDefault();
+
+            const index = document.getElementById('editTaskIndex').value;
+            tasks[index].description = document.getElementById('editTaskDescription').value;
+            tasks[index].dueDate = document.getElementById('editTaskDueDate').value;
+            tasks[index].priority = document.getElementById('editTaskPriority').value;
+            tasks[index].status = document.getElementById('editTaskStatus').value;
+
+            renderTodoTable();
+            renderUpcomingTasks();
+            updateStats();
+            renderCourseProgressChart(); // Update chart
+            renderWeeklySchedule(); // Update weekly schedule
+            hideEditTaskModal();
+            alert('Task updated successfully!');
+        });
+
+        document.getElementById('addCourseForm').addEventListener('submit', function(event) {
+            event.preventDefault();
+
+            const newCourseName = document.getElementById('newCourseName').value.trim();
+            if (newCourseName && !courses.includes(newCourseName)) {
+                courses.push(newCourseName);
+                courses.sort(); 
+                renderCourseOptions(); 
+                renderCourseScoresOverview(); 
+                renderCourseProgressChart(); // Update chart
+                hideAddCourseModal();
+                alert(`Course "${newCourseName}" added successfully!`);
+            } else if (courses.includes(newCourseName)) {
+                alert(`Course "${newCourseName}" already exists.`);
+            } else {
+                alert('Course name cannot be empty.');
+            }
+        });
+
+        document.getElementById('addScoreForm').addEventListener('submit', function(event) {
+            event.preventDefault();
+
+            const assignmentName = document.getElementById('scoreAssignmentName').value;
+            const scoreCourse = document.getElementById('scoreCourse').value;
+            const scoreValue = parseFloat(document.getElementById('scoreValue').value);
+            const scoreDate = document.getElementById('scoreDate').value;
+            const grade = calculateGrade(scoreValue);
+
+            const newAssignment = {
+                id: assignments.length + 1,
+                name: assignmentName,
+                course: scoreCourse,
+                score: scoreValue,
+                grade: grade,
+                date: scoreDate
+            };
+
+            assignments.push(newAssignment);
+            renderAssignmentScores();
+            renderCourseScoresOverview(); 
+            updateStats(); 
+            renderScoreDistributionChart(); // Update chart
+            hideAddScoreModal();
+            alert('Score added successfully!');
+        });
+
+        // --- EDIT/DELETE FUNCTIONS ---
+        function editTask(index) {
+            showEditTaskModal(index); 
+        }
+
+        function deleteTask(index) {
+            if (confirm('Are you sure you want to delete this task?')) {
+                tasks.splice(index, 1); 
+                renderTodoTable();
+                renderUpcomingTasks();
+                updateStats();
+                renderCourseProgressChart(); // Update chart
+                renderWeeklySchedule(); // Update weekly schedule
+                alert('Task deleted successfully!');
+            }
+        }
+
+        function editScore(index) {
+            alert('Edit score functionality for assignment: ' + assignments[index].name);
+            // Implement a modal to edit score details
+        }
+
+        function deleteScore(index) {
+            if (confirm('Are you sure you want to delete this score?')) {
+                assignments.splice(index, 1);
+                renderAssignmentScores();
+                renderCourseScoresOverview(); 
+                updateStats(); 
+                renderScoreDistributionChart(); // Update chart
+                alert('Score deleted successfully!');
+            }
+        }
+
+        function recordStressLevel() {
+            const currentStress = parseInt(document.getElementById('dailyStressSlider').value);
+            const today = new Date().toISOString().slice(0, 10); // YYYY-MM-DD format
+
+            // Get selected stress causes
+            const stressCauses = [];
+            document.querySelectorAll('#stress input[type="checkbox"]:checked').forEach(checkbox => {
+                if (checkbox.value === 'Other') {
+                    const otherCause = document.getElementById('otherStressCause').value.trim();
+                    if (otherCause) {
+                        stressCauses.push(otherCause);
+                    }
+                } else {
+                    stressCauses.push(checkbox.value);
+                }
+            });
+
+            // Check if an entry for today already exists
+            const existingEntryIndex = stressHistory.findIndex(entry => entry.date === today);
+
+            if (existingEntryIndex !== -1) {
+                // Update existing entry
+                stressHistory[existingEntryIndex] = {
+                    date: today,
+                    level: currentStress,
+                    causes: stressCauses
+                };
+                alert(`Stress level for today updated to ${currentStress}/11.`);
+            } else {
+                // Add new entry
+                stressHistory.push({
+                    date: today,
+                    level: currentStress,
+                    causes: stressCauses
+                });
+                alert(`Stress level ${currentStress}/11 recorded for today.`);
+            }
+            
+            // Sort stress history by date
+            stressHistory.sort((a, b) => new Date(a.date) - new Date(b.date));
+
+            updateStats();
+            renderStressHistoryChart(); // Update the chart after recording
+        }
+
+        // --- SETTINGS FUNCTIONS ---
+        function saveDisplayName() {
+            const newDisplayName = document.getElementById('displayNameInput').value.trim();
+            if (newDisplayName) {
+                currentDisplayName = newDisplayName;
+                document.getElementById('loggedInDisplayName').textContent = currentDisplayName;
+                saveUserData(currentUser);
+                alert('Display name updated successfully!');
+            } else {
+                alert('Display name cannot be empty.');
+            }
+        }
+
+        function resetAllProgress() {
+            if (confirm('WARNING: This will delete ALL your progress (tasks, scores, stress, courses) for this account. This action cannot be undone. Are you absolutely sure?')) {
+                // Clear data arrays
+                tasks = [];
+                assignments = [];
+                stressHistory = [];
+                courses = [];
+                currentDisplayName = currentUser; // Reset display name to username
+
+                // Remove data from localStorage for the current user
+                localStorage.removeItem(`userData_${currentUser}`);
+
+                // Re-render all UI components to reflect empty state
+                renderTodoTable();
+                renderUpcomingTasks();
+                renderAssignmentScores();
+                renderCourseOptions();
+                renderCourseScoresOverview();
+                updateStats();
+                renderCourseProgressChart(); // Re-render charts
+                renderScoreDistributionChart(); // Re-render charts
+                renderWeeklySchedule(); // Re-render weekly schedule
+                renderStressHistoryChart(); // Re-render stress history chart
+                document.getElementById('displayNameInput').value = currentDisplayName; // Update settings input
+                document.getElementById('loggedInDisplayName').textContent = currentDisplayName; // Update dashboard display
+
+                alert('All progress has been reset.');
+                showSection('dashboard'); // Go back to dashboard
+            }
+        }
+
+    </script>
+</body>
+</html>
